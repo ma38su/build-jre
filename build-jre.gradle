@@ -1,0 +1,86 @@
+if (tasks.findByName('execJdeps')) {
+  return
+}
+
+def ln = System.lineSeparator
+def sep = File.separator
+
+def java_home = project.property('org.gradle.java.home')
+def java_bin = java_home + sep + 'bin'
+
+def jdeps = java_bin + sep + 'jdeps'
+def jlink = java_bin + sep + 'jlink'
+def jmods = java_home + sep + 'jmods'
+
+def outputDir = "$buildDir${sep}jre"
+
+task execJdeps(type: Exec, dependsOn: configurations.runtimeClasspath) {
+    commandLine jdeps
+    args '--print-module-deps'
+    args configurations.runtimeClasspath.findAll{ it.name.endsWith('jar') }.collect{ it.path }
+    
+    standardOutput = new ByteArrayOutputStream()
+    errorOutput = new ByteArrayOutputStream()
+    doLast {
+      def sout = standardOutput.toString()
+      if (sout.length() > 0) {
+        println "out: "+ sout
+      }
+      def serr = errorOutput.toString()
+      if (serr.length() > 0) {
+        println "err: "+ serr
+      }
+    }
+
+    ext.modules = {
+        return standardOutput.toString().replace(ln, '')
+    }
+}
+
+
+/**
+ * Get Minimum JRE Environment from the built one jar file.
+ */
+task execJlink(type: Exec, dependsOn: execJdeps) {
+    commandLine jlink
+    args '--module-path', jmods
+    args '--add-modules', "${->execJdeps.modules()}"
+    args '--output', outputDir
+
+    standardOutput = new ByteArrayOutputStream()
+    errorOutput = new ByteArrayOutputStream()
+    doLast {
+      def sout = standardOutput.toString()
+      if (sout.length() > 0) {
+        println "out: "+ sout
+      }
+      def serr = errorOutput.toString()
+      if (serr.length() > 0) {
+        println "err: "+ serr
+      }
+    }
+}
+
+execJlink.doFirst {
+    delete outputDir
+}
+
+if (project.hasProperty('distributions')) {
+    distributions {
+        main {
+            contents {
+                from(outputDir) {
+                    into 'jre'
+                }
+            }
+        }
+    }
+}
+
+if (tasks.findByName('distZip')) {
+    tasks['distZip'].dependsOn execJlink
+}
+if (tasks.findByName('instDist')) {
+    tasks['instDist'].dependsOn execJlink
+}
+

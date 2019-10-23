@@ -1,0 +1,58 @@
+import groovy.text.SimpleTemplateEngine
+
+if (tasks.findByName('startScripts')) {
+    class CustomWindowsStartScriptGenerator implements TemplateBasedScriptGenerator {
+        private TextResource template
+        private String args
+        private String jrePath
+        
+        void setTemplate(TextResource template) {
+            this.template = template
+        }
+        TextResource getTemplate() {
+            return this.template
+        }
+        
+        void setArgs(String args) {
+            this.args = args
+        }
+        
+        String getArgs() {
+            return this.args
+        }
+        
+        void setJrePath(String jrePath) {
+            this.jrePath = jrePath;
+        }
+        
+        void generateScript(JavaAppStartScriptGenerationDetails details, Writer destination) {
+            def engine = new SimpleTemplateEngine()
+            def map = [
+                defaultJvmOpts : details.getDefaultJvmOpts().stream()
+                                    .map({"\"" + it + "\""})
+                                    .collect(java.util.stream.Collectors.joining(',')),
+                classpath : details.getClasspath()
+                                    .map({"%APP_HOME%/" + it})
+                                    .collect(java.util.stream.Collectors.joining(',')),
+                mainClassName : details.getMainClassName(),
+                args : this.args,
+                jrePath : this.jrePath
+            ]
+            def writable = engine.createTemplate(this.template.asString()).make(map)
+            
+            destination.write(writable.toString().replace('/', '\\').replace('\n', '\r\n'))
+        }
+    }
+    
+    startScripts {
+        windowsStartScriptGenerator = new CustomWindowsStartScriptGenerator()
+        // set template
+        windowsStartScriptGenerator.template = resources.text.fromFile('templates/winStartScript.template')
+
+        // set built jre path
+        windowsStartScriptGenerator.jrePath = '../jre'
+
+        // default arguments
+        windowsStartScriptGenerator.args = ''
+    }
+}

@@ -1,0 +1,12 @@
+@echo off
+
+set DIRNAME=
+
+set JAVA_HOME=$javaHome
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+set CLASSPATH=$classpath
+
+set CLASS_NAME_AND_ARGS=$mainClassName $args
+
+%JAVA_EXE% %DEFAULT_JVM_OPTS% %JAVA_OPTS% -classpath %CLASSPATH% %CLASS_NAME_AND_ARGS%
