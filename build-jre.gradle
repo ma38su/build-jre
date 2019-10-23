@@ -12,12 +12,15 @@ def jdeps = java_bin + sep + 'jdeps'
 def jlink = java_bin + sep + 'jlink'
 def jmods = java_home + sep + 'jmods'
 
-def outputDir = "$buildDir${sep}jre"
+def outputDir = "\"$buildDir${sep}jre\""
 
 task execJdeps(type: Exec, dependsOn: configurations.runtimeClasspath) {
     commandLine jdeps
+    args '--multi-release', targetCompatibility
     args '--print-module-deps'
     args configurations.runtimeClasspath.findAll{ it.name.endsWith('jar') }.collect{ it.path }
+
+    ignoreExitValue = true
     
     standardOutput = new ByteArrayOutputStream()
     errorOutput = new ByteArrayOutputStream()
@@ -43,9 +46,11 @@ task execJdeps(type: Exec, dependsOn: configurations.runtimeClasspath) {
  */
 task execJlink(type: Exec, dependsOn: execJdeps) {
     commandLine jlink
-    args '--module-path', jmods
+    //args '-–compress=1'
+    args '--module-path', "\"${jmods}\""
     args '--add-modules', "${->execJdeps.modules()}"
     args '--output', outputDir
+    ignoreExitValue = true
 
     standardOutput = new ByteArrayOutputStream()
     errorOutput = new ByteArrayOutputStream()
